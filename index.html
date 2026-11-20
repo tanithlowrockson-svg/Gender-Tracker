@@ -1,0 +1,195 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shared Gender Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #171923;
+      color: #f4f4f8;
+      margin: 0;
+      padding: 24px;
+    }
+    main {
+      max-width: 420px;
+      margin: 30px auto;
+      background: #252938;
+      padding: 24px;
+      border-radius: 18px;
+    }
+    h1 { text-align: center; }
+    label {
+      display: block;
+      margin-top: 18px;
+      margin-bottom: 7px;
+    }
+    input, select, button {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 13px;
+      border-radius: 9px;
+      border: 1px solid #555b70;
+      font-size: 16px;
+    }
+    input, select {
+      background: #171923;
+      color: white;
+    }
+    button {
+      margin-top: 20px;
+      background: #a58bd4;
+      color: #171923;
+      border: none;
+      font-weight: bold;
+    }
+    #logout {
+      background: #454b60;
+      color: white;
+    }
+    #tracker { display: none; }
+    #status {
+      text-align: center;
+      font-size: 14px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Gender Tracker</h1>
+
+  <section id="login">
+    <label>Email</label>
+    <input id="email" type="email" autocomplete="username">
+
+    <label>Password</label>
+    <input id="password" type="password" autocomplete="current-password">
+
+    <button id="loginButton">Sign in</button>
+  </section>
+
+  <section id="tracker">
+    <label>Gender</label>
+    <select id="gender">
+      <option>Fem</option>
+      <option>Masc</option>
+      <option>Non-binary</option>
+      <option>Agender</option>
+    </select>
+
+    <label>Pronouns</label>
+    <input id="pronouns" type="text" placeholder="e.g. she/her">
+
+    <label>Mood</label>
+    <input id="mood" type="text" placeholder="How are you feeling?">
+
+    <button id="saveButton">Save changes</button>
+    <button id="logout">Sign out</button>
+  </section>
+
+  <p id="status">Please sign in.</p>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<script>
+  // REPLACE THIS WITH YOUR FIREBASE CONFIGURATION
+  const firebaseConfig = {
+  const firebaseConfig = {
+  apiKey: "AIzaSyC7k1KQDURTcnpHaLp45btCOVauf3bylOs",
+  authDomain: "gender-tracker.firebaseapp.com",
+  databaseURL: "https://gender-tracker-default-rtdb.firebaseio.com",
+  projectId: "gender-tracker",
+  storageBucket: "gender-tracker.firebasestorage.app",
+  messagingSenderId: "659460197146",
+  appId: "1:659460197146:web:b11f759f121e3275c67aa3"
+};
+
+  firebase.initializeApp(firebaseConfig);
+
+  const auth = firebase.auth();
+  const database = firebase.database();
+
+  const loginSection = document.getElementById("login");
+  const trackerSection = document.getElementById("tracker");
+  const statusText = document.getElementById("status");
+
+  let currentUser = null;
+
+  auth.onAuthStateChanged(async user => {
+    currentUser = user;
+
+    loginSection.style.display = user ? "none" : "block";
+    trackerSection.style.display = user ? "block" : "none";
+
+    if (user) {
+      statusText.textContent = "Loading your tracker...";
+
+      try {
+        const snapshot = await database
+          .ref("sharedTracker/current").once("value");
+
+        const data = snapshot.val();
+
+        if (data) {
+          document.getElementById("gender").value =
+            data.gender || "Fem";
+          document.getElementById("pronouns").value =
+            data.pronouns || "";
+          document.getElementById("mood").value =
+            data.mood || "";
+        }
+
+        statusText.textContent = "Tracker ready.";
+      } catch (error) {
+        statusText.textContent =
+          "Couldn't load tracker. Check your database access.";
+      }
+    } else {
+      statusText.textContent = "Please sign in.";
+    }
+  });
+
+  document.getElementById("loginButton")
+    .addEventListener("click", async () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+      } catch (error) {
+        statusText.textContent = "Sign-in failed. Check your details.";
+      }
+    });
+
+  document.getElementById("saveButton")
+    .addEventListener("click", async () => {
+      if (!currentUser) return;
+
+      statusText.textContent = "Saving...";
+
+      try {
+        await database.ref("sharedTracker/current").update({
+          gender: document.getElementById("gender").value,
+          pronouns: document.getElementById("pronouns").value,
+          mood: document.getElementById("mood").value,
+          updatedAt: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        statusText.textContent = "Changes saved!";
+      } catch (error) {
+        statusText.textContent =
+          "Couldn't save. Check your database access.";
+      }
+    });
+
+  document.getElementById("logout")
+    .addEventListener("click", () => auth.signOut());
+</script>
+</body>
+</html>
